@@ -1,0 +1,982 @@
+ <!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Sistema Solar en Realidad Aumentada - Experiencia Educativa Interactiva">
+  <title>Sistema Solar AR - Educativo</title>
+  
+  <!-- A-Frame y AR.js - Versiones actualizadas -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  
+  <!-- Script de inicialización temprana -->
+  <script>
+    // Variables globales
+    var isReady = false;
+    var isRotating = true;
+    var speedMultiplier = 1;
+    
+    // Datos educativos de los planetas
+    var planetData = {
+      earth: {
+        name: 'Tierra',
+        type: 'Planeta rocoso',
+        diameter: '12,742 km',
+        distance: '149.6 millones km',
+        fact: 'El único planeta conocido con vida. 71% de su superficie está cubierta de agua. Tiene una luna natural.'
+      },
+      mars: {
+        name: 'Marte',
+        type: 'Planeta rocoso',
+        diameter: '6,779 km',
+        distance: '227.9 millones km',
+        fact: 'Conocido como el "Planeta Rojo" por su color. Tiene los volcanes más grandes del sistema solar, incluyendo el Monte Olimpo.'
+      },
+      jupiter: {
+        name: 'Júpiter',
+        type: 'Gigante gaseoso',
+        diameter: '139,820 km',
+        distance: '778.5 millones km',
+        fact: 'El planeta más grande del sistema solar. Su Gran Mancha Roja es una tormenta que dura más de 300 años. Tiene 79 lunas conocidas.'
+      },
+      saturn: {
+        name: 'Saturno',
+        type: 'Gigante gaseoso',
+        diameter: '116,460 km',
+        distance: '1,434 millones km',
+        fact: 'Famoso por sus espectaculares anillos hechos de hielo y roca. Es el planeta menos denso, ¡podría flotar en agua!'
+      }
+    };
+    
+    // Iniciar experiencia
+    function startExperience() {
+      console.log('startExperience ejecutada!');
+      var instructions = document.getElementById('instructions');
+      var loading = document.getElementById('loading');
+      
+      if (instructions) {
+        instructions.style.display = 'none';
+      }
+      if (loading) {
+        loading.style.display = 'block';
+      }
+      
+      setTimeout(function() {
+        if (loading) {
+          loading.style.display = 'none';
+        }
+        isReady = true;
+        console.log('isReady ahora es true');
+      }, 2000);
+    }
+    
+    // Toggle planeta (agregar/quitar)
+    function togglePlanet(planet) {
+      console.log('togglePlanet llamado para:', planet, 'isReady:', isReady);
+      if (!isReady) {
+        console.log('No está listo aún');
+        return;
+      }
+      
+      var planetOrbit = document.getElementById(planet + '-orbit');
+      if (!planetOrbit) {
+        console.log('No se encontró el planeta:', planet);
+        return;
+      }
+      
+      var visibleAttr = planetOrbit.getAttribute('visible');
+      var isVisible = visibleAttr === null || visibleAttr === 'true' || visibleAttr === true;
+      
+      console.log('Estado actual visible:', visibleAttr, 'isVisible:', isVisible);
+      
+      // Alternar visibilidad
+      planetOrbit.setAttribute('visible', !isVisible);
+      console.log('Nuevo estado:', !isVisible);
+      
+      // Actualizar estado del botón
+      if (event && event.target) {
+        event.target.classList.toggle('active');
+      }
+    }
+    
+    // Mostrar información al hacer hover sobre un planeta
+    function showPlanetInfo(planet) {
+      console.log('showPlanetInfo llamado para:', planet);
+      var data = planetData[planet];
+      var infoPanel = document.getElementById('info-panel');
+      
+      if (!data) {
+        console.log('No hay datos para el planeta:', planet);
+        return;
+      }
+      
+      // Actualizar contenido
+      document.getElementById('planet-name').textContent = data.name;
+      document.getElementById('planet-type').textContent = data.type;
+      document.getElementById('planet-diameter').textContent = data.diameter;
+      document.getElementById('planet-distance').textContent = data.distance;
+      document.getElementById('planet-fact').textContent = data.fact;
+      
+      // Mostrar con animación
+      infoPanel.style.display = 'block';
+      console.log('Panel de info mostrado');
+    }
+    
+    // Ocultar información
+    function hidePlanetInfo() {
+      console.log('hidePlanetInfo llamado');
+      var infoPanel = document.getElementById('info-panel');
+      if (infoPanel) {
+        infoPanel.style.display = 'none';
+      }
+    }
+    
+    // Pausar/Reanudar rotación
+    function toggleRotation() {
+      isRotating = !isRotating;
+      var btn = event.target;
+      
+      var planets = ['earth', 'mars', 'jupiter', 'saturn'];
+      planets.forEach(function(planet) {
+        var rotation = document.getElementById(planet + '-rotation');
+        var orbitRotation = document.getElementById(planet + '-orbit-rotation');
+        
+        if (rotation) {
+          if (isRotating) {
+            rotation.emit('resume');
+            orbitRotation.emit('resume');
+            btn.textContent = '⏯️ Pausar';
+          } else {
+            rotation.emit('pause');
+            orbitRotation.emit('pause');
+            btn.textContent = '▶️ Reanudar';
+          }
+        }
+      });
+      
+      // Pausar/reanudar luna y sol
+      var moonOrbit = document.querySelector('#moon-orbit > a-animation');
+      var moonRotation = document.querySelector('#moon > a-animation');
+      var sunRotation = document.querySelector('#sun > a-animation');
+      
+      if (isRotating) {
+        moonOrbit.emit('resume');
+        moonRotation.emit('resume');
+        sunRotation.emit('resume');
+      } else {
+        moonOrbit.emit('pause');
+        moonRotation.emit('pause');
+        sunRotation.emit('pause');
+      }
+    }
+    
+    // Cambiar velocidad
+    function changeSpeed() {
+      speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 0.5 : 1;
+      var btn = event.target;
+      
+      var speedText = speedMultiplier === 2 ? '⚡ 2x' : speedMultiplier === 0.5 ? '🐌 0.5x' : '⚡ 1x';
+      btn.textContent = speedText;
+      
+      // Actualizar velocidad de animaciones
+      var planets = ['earth', 'mars', 'jupiter', 'saturn'];
+      planets.forEach(function(planet) {
+        var rotation = document.getElementById(planet + '-rotation');
+        var orbitRotation = document.getElementById(planet + '-orbit-rotation');
+        
+        if (rotation) {
+          var baseDur = planet === 'earth' ? 7000 : planet === 'mars' ? 7500 : planet === 'jupiter' ? 5000 : 6000;
+          var baseOrbitDur = planet === 'earth' ? 15000 : planet === 'mars' ? 18000 : planet === 'jupiter' ? 25000 : 30000;
+          
+          rotation.setAttribute('dur', baseDur / speedMultiplier);
+          orbitRotation.setAttribute('dur', baseOrbitDur / speedMultiplier);
+        }
+      });
+    }
+  </script>
+  
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Panel de información - Estilo cómic */
+    #info-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #FFFFFF;
+      color: #000;
+      padding: 25px 30px;
+      border-radius: 20px;
+      max-width: 400px;
+      z-index: 1000;
+      box-shadow: 
+        0 0 0 8px #000,
+        0 0 0 12px #FFD700,
+        0 10px 30px rgba(0, 0, 0, 0.5);
+      border: 4px solid #000;
+      font-family: 'Comic Sans MS', 'Arial Black', sans-serif;
+      animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    @keyframes popIn {
+      0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+    }
+
+    #info-panel::before {
+      content: '';
+      position: absolute;
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-top: 30px solid #000;
+    }
+
+    #info-panel::after {
+      content: '';
+      position: absolute;
+      bottom: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 26px solid #FFFFFF;
+    }
+
+    #info-panel h2 {
+      margin: 0 0 15px 0;
+      font-size: 32px;
+      color: #FF4500;
+      text-transform: uppercase;
+      text-shadow: 
+        3px 3px 0 #000,
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    #info-panel p {
+      margin: 10px 0;
+      font-size: 16px;
+      line-height: 1.8;
+      font-weight: bold;
+      background: linear-gradient(90deg, #FFE5B4 0%, #FFF 50%, #FFE5B4 100%);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .info-label {
+      color: #0066CC;
+      font-weight: 900;
+      text-transform: uppercase;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    #info-panel .fact-box {
+      background: #FFEB3B;
+      border: 3px dashed #000;
+      padding: 12px;
+      margin-top: 15px;
+      border-radius: 10px;
+      font-style: italic;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #FF4500;
+      color: white;
+      border: 3px solid #000;
+      border-radius: 50%;
+      width: 35px;
+      height: 35px;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 2px 2px 0 #000;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: #FF6347;
+      transform: scale(1.1);
+    }
+
+    .close-btn:active {
+      transform: scale(0.95);
+      box-shadow: 1px 1px 0 #000;
+    }
+
+    /* Panel de controles */
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      padding: 20px;
+      border-radius: 15px;
+      z-index: 1000;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .control-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .control-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .control-btn:active {
+      transform: translateY(0);
+    }
+
+    .control-btn.active {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    /* Instrucciones iniciales */
+    #instructions {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      z-index: 2000;
+      max-width: 400px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    #instructions h1 {
+      color: #4da6ff;
+      margin-bottom: 20px;
+    }
+
+    #instructions button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 20px;
+      transition: all 0.3s ease;
+    }
+
+    #instructions button:hover {
+      transform: scale(1.05);
+    }
+
+    /* Indicador de carga */
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 20px;
+      z-index: 1500;
+      display: none;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      #info-panel {
+        max-width: 280px;
+        padding: 15px;
+        font-size: 12px;
+      }
+      
+      #controls {
+        bottom: 10px;
+        padding: 15px;
+        gap: 10px;
+      }
+      
+      .control-btn {
+        padding: 10px 16px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Instrucciones iniciales -->
+  <div id="instructions">
+    <h1>🌍 Sistema Solar AR</h1>
+    <p>Apunta tu cámara al marcador Hiro para ver el sistema solar.</p>
+    <p>Usa los botones para agregar/quitar planetas. Toca un planeta para ver su información.</p>
+    <button onclick="startExperience()">Comenzar Experiencia</button>
+  </div>
+
+  <!-- Indicador de carga -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Cargando recursos...</p>
+  </div>
+
+  <!-- Panel de información estilo cómic -->
+  <div id="info-panel" style="display: none;">
+    <button class="close-btn" onclick="hidePlanetInfo()">✕</button>
+    <h2 id="planet-name">Tierra</h2>
+    <p><span class="info-label">🪐 Tipo:</span> <span id="planet-type">Planeta rocoso</span></p>
+    <p><span class="info-label">📏 Diámetro:</span> <span id="planet-diameter">12,742 km</span></p>
+    <p><span class="info-label">🌟 Distancia:</span> <span id="planet-distance">149.6 millones km</span></p>
+    <div class="fact-box">
+      <p style="margin: 0; background: transparent; border: none; box-shadow: none; padding: 0;">
+        <span class="info-label">💡 Dato Curioso:</span><br>
+        <span id="planet-fact">El único planeta conocido con vida. 71% de su superficie está cubierta de agua.</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Controles -->
+  <div id="controls">
+    <button class="control-btn active" onclick="togglePlanet('earth')">🌍 Tierra</button>
+    <button class="control-btn" onclick="togglePlanet('mars')">🔴 Marte</button>
+    <button class="control-btn" onclick="togglePlanet('jupiter')">🪐 Júpiter</button>
+    <button class="control-btn" onclick="togglePlanet('saturn')">💫 Saturno</button>
+    <button class="control-btn" onclick="toggleRotation()">⏯️ Pausar</button>
+    <button class="control-btn" onclick="changeSpeed()">⚡ Velocidad</button>
+  </div>
+
+  <!-- Escena AR -->
+  <a-scene 
+    embedded 
+    arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;'
+    vr-mode-ui="enabled: false"
+    renderer="logarithmicDepthBuffer: true; precision: medium;"
+    loading-screen="enabled: false">
+    
+    <!-- Assets -->
+    <a-assets>
+      <!-- Texturas de planetas -->
+      <img id="earth-texture" src="https://raw.githubusercontent.com/aframevr/sample-assets/master/assets/images/space/earth_atmos_2048.jpg" crossorigin="anonymous">
+      <img id="mars-texture" src="https://www.solarsystemscope.com/textures/download/2k_mars.jpg" crossorigin="anonymous">
+      <img id="jupiter-texture" src="https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg" crossorigin="anonymous">
+      <img id="saturn-texture" src="https://www.solarsystemscope.com/textures/download/2k_saturn.jpg" crossorigin="anonymous">
+      <img id="moon-texture" src="https://raw.githubusercontent.com/aframevr/sample-assets/master/assets/images/space/moon_1k_color.jpg" crossorigin="anonymous">
+      
+      <!-- Skybox espacial -->
+      <img id="space" src="https://raw.githubusercontent.com/aframevr/sample-assets/master/assets/images/space/space.jpg" crossorigin="anonymous">
+    </a-assets>
+
+    <!-- Skybox -->
+    <a-sky src="#space" rotation="0 0 0"></a-sky>
+
+    <!-- Luz ambiental -->
+    <a-light type="ambient" color="#445566" intensity="0.5"></a-light>
+    <a-light type="directional" color="#FFF" intensity="1" position="2 4 2"></a-light>
+
+    <!-- Marcador AR -->
+    <a-marker preset="hiro" id="marker" emitevents="true" raycaster="objects: .clickable" cursor="rayOrigin: mouse; fuse: false">
+      <!-- Contenedor principal con rotación -->
+      <a-entity id="solar-system" rotation="-90 0 0" position="0 0 0">
+        
+        <!-- Sol (centro) -->
+        <a-sphere 
+          id="sun"
+          position="0 0 0" 
+          radius="0.3" 
+          color="#FDB813"
+          material="emissive: #FDB813; emissiveIntensity: 0.5">
+          <a-animation 
+            attribute="rotation" 
+            dur="20000" 
+            to="0 360 0" 
+            easing="linear" 
+            repeat="indefinite">
+          </a-animation>
+        </a-sphere>
+
+        <!-- Tierra (planeta principal) -->
+        <a-entity id="earth-orbit" rotation="0 0 0" class="planet-entity">
+          <a-sphere 
+            id="earth"
+            material="src: #earth-texture; metalness: 0.2; roughness: 0.8" 
+            position="1.5 0 0" 
+            radius="0.4" 
+            segments-height="64"
+            segments-width="64"
+            planet-info="planet: earth"
+            class="clickable">
+            <a-animation 
+              id="earth-rotation"
+              attribute="rotation" 
+              dur="7000" 
+              to="0 360 0" 
+              easing="linear" 
+              repeat="indefinite">
+            </a-animation>
+            
+            <!-- Luna orbitando la Tierra -->
+            <a-entity id="moon-orbit">
+              <a-sphere 
+                id="moon"
+                material="src: #moon-texture; roughness: 1" 
+                position="0.6 0 0" 
+                radius="0.1"
+                segments-height="32"
+                segments-width="32">
+                <a-animation 
+                  attribute="rotation" 
+                  dur="3000" 
+                  to="0 360 0" 
+                  easing="linear" 
+                  repeat="indefinite">
+                </a-animation>
+              </a-sphere>
+              <a-animation 
+                attribute="rotation" 
+                dur="8000" 
+                to="0 360 0" 
+                easing="linear" 
+                repeat="indefinite">
+              </a-animation>
+            </a-entity>
+          </a-sphere>
+          
+          <!-- Órbita visual -->
+          <a-torus 
+            color="#4da6ff" 
+            radius="1.5" 
+            radius-tubular="0.005" 
+            rotation="90 0 0"
+            material="opacity: 0.3; transparent: true">
+          </a-torus>
+          
+          <a-animation 
+            id="earth-orbit-rotation"
+            attribute="rotation" 
+            dur="15000" 
+            to="0 360 0" 
+            easing="linear" 
+            repeat="indefinite">
+          </a-animation>
+        </a-entity>
+
+        <!-- Marte -->
+        <a-entity id="mars-orbit" rotation="0 0 0" visible="false" class="planet-entity">
+          <a-sphere 
+            id="mars"
+            material="color: #CD5C5C; roughness: 0.9; metalness: 0.1" 
+            position="2.2 0 0" 
+            radius="0.35" 
+            segments-height="64"
+            segments-width="64"
+            planet-info="planet: mars"
+            class="clickable">
+            <a-animation 
+              id="mars-rotation"
+              attribute="rotation" 
+              dur="7500" 
+              to="0 360 0" 
+              easing="linear" 
+              repeat="indefinite">
+            </a-animation>
+          </a-sphere>
+          
+          <a-torus 
+            color="#ff6b6b" 
+            radius="2.2" 
+            radius-tubular="0.005" 
+            rotation="90 0 0"
+            material="opacity: 0.3; transparent: true">
+          </a-torus>
+          
+          <a-animation 
+            id="mars-orbit-rotation"
+            attribute="rotation" 
+            dur="18000" 
+            to="0 360 0" 
+            easing="linear" 
+            repeat="indefinite">
+          </a-animation>
+        </a-entity>
+
+        <!-- Júpiter -->
+        <a-entity id="jupiter-orbit" rotation="0 0 0" visible="false" class="planet-entity">
+          <a-sphere 
+            id="jupiter"
+            material="color: #C88B3A; roughness: 0.7; metalness: 0.2" 
+            position="3.2 0 0" 
+            radius="0.6" 
+            segments-height="64"
+            segments-width="64"
+            planet-info="planet: jupiter"
+            class="clickable">
+            <a-animation 
+              id="jupiter-rotation"
+              attribute="rotation" 
+              dur="5000" 
+              to="0 360 0" 
+              easing="linear" 
+              repeat="indefinite">
+            </a-animation>
+          </a-sphere>
+          
+          <a-torus 
+            color="#ffb347" 
+            radius="3.2" 
+            radius-tubular="0.005" 
+            rotation="90 0 0"
+            material="opacity: 0.3; transparent: true">
+          </a-torus>
+          
+          <a-animation 
+            id="jupiter-orbit-rotation"
+            attribute="rotation" 
+            dur="25000" 
+            to="0 360 0" 
+            easing="linear" 
+            repeat="indefinite">
+          </a-animation>
+        </a-entity>
+
+        <!-- Saturno (con anillos) -->
+        <a-entity id="saturn-orbit" rotation="0 0 0" visible="false" class="planet-entity">
+          <a-entity position="4.2 0 0">
+            <a-sphere 
+              id="saturn"
+              material="color: #EAD6A0; roughness: 0.5; metalness: 0.4; emissive: #EAD6A0; emissiveIntensity: 0.1" 
+              radius="0.5" 
+              segments-height="64"
+              segments-width="64"
+              planet-info="planet: saturn"
+              class="clickable">
+              <a-animation 
+                id="saturn-rotation"
+                attribute="rotation" 
+                dur="6000" 
+                to="0 360 0" 
+                easing="linear" 
+                repeat="indefinite">
+              </a-animation>
+            </a-sphere>
+            
+            <!-- Anillos de Saturno -->
+            <a-torus 
+              color="#D4C5A9" 
+              radius="0.65" 
+              radius-tubular="0.05" 
+              rotation="90 0 0"
+              material="opacity: 0.85; transparent: true; side: double; metalness: 0.4">
+            </a-torus>
+            <a-torus 
+              color="#C9B896" 
+              radius="0.75" 
+              radius-tubular="0.04" 
+              rotation="90 0 0"
+              material="opacity: 0.75; transparent: true; side: double; metalness: 0.3">
+            </a-torus>
+            <a-torus 
+              color="#B8A67D" 
+              radius="0.85" 
+              radius-tubular="0.03" 
+              rotation="90 0 0"
+              material="opacity: 0.65; transparent: true; side: double; metalness: 0.2">
+            </a-torus>
+          </a-entity>
+          
+          <a-torus 
+            color="#ffd700" 
+            radius="4.2" 
+            radius-tubular="0.005" 
+            rotation="90 0 0"
+            material="opacity: 0.3; transparent: true">
+          </a-torus>
+          
+          <a-animation 
+            id="saturn-orbit-rotation"
+            attribute="rotation" 
+            dur="30000" 
+            to="0 360 0" 
+            easing="linear" 
+            repeat="indefinite">
+          </a-animation>
+        </a-entity>
+
+      </a-entity>
+    </a-marker>
+
+    <!-- Cámara -->
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    // Datos educativos de los planetas
+    const planetData = {
+      earth: {
+        name: 'Tierra',
+        type: 'Planeta rocoso',
+        diameter: '12,742 km',
+        distance: '149.6 millones km',
+        fact: 'El único planeta conocido con vida. 71% de su superficie está cubierta de agua. Tiene una luna natural.'
+      },
+      mars: {
+        name: 'Marte',
+        type: 'Planeta rocoso',
+        diameter: '6,779 km',
+        distance: '227.9 millones km',
+        fact: 'Conocido como el "Planeta Rojo" por su color. Tiene los volcanes más grandes del sistema solar, incluyendo el Monte Olimpo.'
+      },
+      jupiter: {
+        name: 'Júpiter',
+        type: 'Gigante gaseoso',
+        diameter: '139,820 km',
+        distance: '778.5 millones km',
+        fact: 'El planeta más grande del sistema solar. Su Gran Mancha Roja es una tormenta que dura más de 300 años. Tiene 79 lunas conocidas.'
+      },
+      saturn: {
+        name: 'Saturno',
+        type: 'Gigante gaseoso',
+        diameter: '116,460 km',
+        distance: '1,434 millones km',
+        fact: 'Famoso por sus espectaculares anillos hechos de hielo y roca. Es el planeta menos denso, ¡podría flotar en agua!'
+      }
+    };
+
+    let currentPlanet = 'earth';
+    let isRotating = true;
+    let speedMultiplier = 1;
+    window.isReady = window.isReady || false;
+
+    // ===== FUNCIONES GLOBALES =====
+
+    // Toggle planeta (agregar/quitar)
+    window.togglePlanetImpl = function(planet) {
+      console.log('togglePlanet llamado para:', planet, 'isReady:', window.isReady);
+      if (!window.isReady) {
+        console.log('No está listo aún');
+        return;
+      }
+      
+      const planetOrbit = document.getElementById(planet + '-orbit');
+      if (!planetOrbit) {
+        console.log('No se encontró el planeta:', planet);
+        return;
+      }
+      
+      const visibleAttr = planetOrbit.getAttribute('visible');
+      const isVisible = visibleAttr === null || visibleAttr === 'true' || visibleAttr === true;
+      
+      console.log('Estado actual visible:', visibleAttr, 'isVisible:', isVisible);
+      
+      // Alternar visibilidad
+      planetOrbit.setAttribute('visible', !isVisible);
+      console.log('Nuevo estado:', !isVisible);
+      
+      // Actualizar estado del botón
+      if (event && event.target) {
+        event.target.classList.toggle('active');
+      }
+    }
+
+    // Mostrar información al hacer hover sobre un planeta
+    window.showPlanetInfo = function(planet) {
+      console.log('showPlanetInfo llamado para:', planet);
+      const data = planetData[planet];
+      const infoPanel = document.getElementById('info-panel');
+      
+      if (!data) {
+        console.log('No hay datos para el planeta:', planet);
+        return;
+      }
+      
+      document.getElementById('planet-name').textContent = data.name;
+      document.getElementById('planet-type').textContent = data.type;
+      document.getElementById('planet-diameter').textContent = data.diameter;
+      document.getElementById('planet-distance').textContent = data.distance;
+      document.getElementById('planet-fact').textContent = data.fact;
+      
+      infoPanel.style.display = 'block';
+      console.log('Panel de info mostrado');
+    }
+
+    // Ocultar información
+    window.hidePlanetInfo = function() {
+      console.log('hidePlanetInfo llamado');
+      const infoPanel = document.getElementById('info-panel');
+      if (infoPanel) {
+        infoPanel.style.display = 'none';
+      }
+    }
+
+    // Pausar/Reanudar rotación
+    window.toggleRotationImpl = function() {
+      isRotating = !isRotating;
+      const btn = event.target;
+      
+      const planets = ['earth', 'mars', 'jupiter', 'saturn'];
+      planets.forEach(planet => {
+        const rotation = document.getElementById(planet + '-rotation');
+        const orbitRotation = document.getElementById(planet + '-orbit-rotation');
+        
+        if (rotation) {
+          if (isRotating) {
+            rotation.emit('resume');
+            orbitRotation.emit('resume');
+            btn.textContent = '⏯️ Pausar';
+          } else {
+            rotation.emit('pause');
+            orbitRotation.emit('pause');
+            btn.textContent = '▶️ Reanudar';
+          }
+        }
+      });
+      
+      // Pausar/reanudar luna y sol
+      const moonOrbit = document.querySelector('#moon-orbit > a-animation');
+      const moonRotation = document.querySelector('#moon > a-animation');
+      const sunRotation = document.querySelector('#sun > a-animation');
+      
+      if (isRotating) {
+        moonOrbit.emit('resume');
+        moonRotation.emit('resume');
+        sunRotation.emit('resume');
+      } else {
+        moonOrbit.emit('pause');
+        moonRotation.emit('pause');
+        sunRotation.emit('pause');
+      }
+    }
+
+    // Cambiar velocidad
+    window.changeSpeedImpl = function() {
+      speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 0.5 : 1;
+      const btn = event.target;
+      
+      const speedText = speedMultiplier === 2 ? '⚡ 2x' : speedMultiplier === 0.5 ? '🐌 0.5x' : '⚡ 1x';
+      btn.textContent = speedText;
+      
+      // Actualizar velocidad de animaciones
+      const planets = ['earth', 'mars', 'jupiter', 'saturn'];
+      planets.forEach(planet => {
+        const rotation = document.getElementById(planet + '-rotation');
+        const orbitRotation = document.getElementById(planet + '-orbit-rotation');
+        
+        if (rotation) {
+          const baseDur = planet === 'earth' ? 7000 : planet === 'mars' ? 7500 : planet === 'jupiter' ? 5000 : 6000;
+          const baseOrbitDur = planet === 'earth' ? 15000 : planet === 'mars' ? 18000 : planet === 'jupiter' ? 25000 : 30000;
+          
+          rotation.setAttribute('dur', baseDur / speedMultiplier);
+          orbitRotation.setAttribute('dur', baseOrbitDur / speedMultiplier);
+        }
+      });
+    }
+
+    // ===== COMPONENTES A-FRAME =====
+
+    // Componente para detectar hover en planetas (debe registrarse antes de usar)
+    AFRAME.registerComponent('planet-info', {
+      schema: {
+        planet: {type: 'string'}
+      },
+      init: function () {
+        const planetName = this.data.planet;
+        
+        this.el.addEventListener('mouseenter', () => {
+          showPlanetInfo(planetName);
+        });
+        
+        this.el.addEventListener('mouseleave', () => {
+          hidePlanetInfo();
+        });
+
+        // Para dispositivos táctiles
+        this.el.addEventListener('click', () => {
+          const infoPanel = document.getElementById('info-panel');
+          if (infoPanel.style.display === 'block') {
+            hidePlanetInfo();
+          } else {
+            showPlanetInfo(planetName);
+          }
+        });
+      }
+    });
+
+    // Detectar cuando el marcador es encontrado
+    AFRAME.registerComponent('emitevents', {
+      init: function () {
+        this.el.addEventListener('markerFound', () => {
+          console.log('Marcador detectado!');
+        });
+        
+        this.el.addEventListener('markerLost', () => {
+          console.log('Marcador perdido');
+        });
+      }
+    });
+
+    // Log de inicio
+    console.log('🌍 Sistema Solar AR - Experiencia Educativa Cargada');
+    console.log('Apunta tu cámara al marcador Hiro para comenzar');
