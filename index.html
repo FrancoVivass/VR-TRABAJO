@@ -768,8 +768,17 @@
       </a-entity>
     </a-marker>
 
-    <!-- Cámara -->
-    <a-entity camera></a-entity>
+    <!-- Cámara con cursor para interacción -->
+    <a-entity camera>
+      <a-cursor
+        id="cursor"
+        raycaster="objects: .clickable"
+        fuse="true"
+        fuse-timeout="1500"
+        color="#4da6ff"
+        opacity="0.8">
+      </a-cursor>
+    </a-entity>
   </a-scene>
 
   <script>
@@ -942,25 +951,35 @@
         planet: {type: 'string'}
       },
       init: function () {
-        const planetName = this.data.planet;
+        var planetName = this.data.planet;
+        var el = this.el;
         
-        this.el.addEventListener('mouseenter', () => {
-          showPlanetInfo(planetName);
-        });
+        console.log('Componente planet-info inicializado para:', planetName);
         
-        this.el.addEventListener('mouseleave', () => {
-          hidePlanetInfo();
-        });
-
-        // Para dispositivos táctiles
-        this.el.addEventListener('click', () => {
-          const infoPanel = document.getElementById('info-panel');
-          if (infoPanel.style.display === 'block') {
+        // Click/Touch para mostrar info
+        el.addEventListener('click', function() {
+          console.log('Click en planeta:', planetName);
+          var infoPanel = document.getElementById('info-panel');
+          if (infoPanel && infoPanel.style.display === 'block') {
             hidePlanetInfo();
           } else {
             showPlanetInfo(planetName);
           }
         });
+        
+        // Eventos de raycaster para hover (desktop)
+        el.addEventListener('mouseenter', function() {
+          console.log('Mouse enter en planeta:', planetName);
+          showPlanetInfo(planetName);
+        });
+        
+        el.addEventListener('mouseleave', function() {
+          console.log('Mouse leave en planeta:', planetName);
+          // No ocultar automáticamente, dejar que el usuario cierre
+        });
+        
+        // Hacer el elemento clickeable
+        el.classList.add('clickable');
       }
     });
 
